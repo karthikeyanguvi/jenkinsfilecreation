@@ -1,0 +1,100 @@
+pipeline {
+
+    agent any
+ 
+    environment {
+
+        SSH_KEY     = 'jobportal'
+
+        DEPLOY_USER = 'ubuntu'
+
+        DEPLOY_HOST = '54.146.230.251'
+
+        APP_DIR     = '/home/ubuntu/jenkinsfilecreation/Job-Portal-Project-Dev'
+
+    }
+ 
+    stages {
+ 
+        stage('Deploy Application') {
+
+            steps {
+
+                sshagent([env.SSH_KEY]) {
+ 
+                    sh """
+
+                    ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} '
+ 
+                    set -e
+ 
+                    cd ${APP_DIR}
+ 
+                    echo "Fetching latest code..."
+
+                    git fetch origin
+ 
+                    echo "Resetting latest code..."
+
+                    git reset --hard origin/main
+ 
+                    echo "Building React frontend..."
+
+                    cd frontend
+
+                    npm install
+
+                    npm run build
+ 
+                    cd ..
+ 
+                    echo "Activating Python virtual environment..."
+
+                    source venv/bin/activate
+ 
+                    echo "Installing Python dependencies..."
+
+                    pip install -r requirement.txt
+ 
+                    echo "Restarting Gunicorn..."
+
+                    sudo systemctl restart gunicorn
+ 
+                    echo "Reloading Nginx..."
+
+                    sudo systemctl reload nginx
+ 
+                    echo "Checking Gunicorn status..."
+
+                    sudo systemctl status gunicorn --no-pager
+ 
+                    '
+
+                    """
+
+                }
+
+            }
+
+        }
+
+    }
+ 
+    post {
+
+        success {
+
+            echo 'Deployment completed successfully'
+
+        }
+ 
+        failure {
+
+            echo 'Deployment failed'
+
+        }
+
+    }
+
+}
+ 
